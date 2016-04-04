@@ -2,69 +2,9 @@
  * Grunt Build File
  */
 module.exports = function(grunt) {
-
-  var banner = '/*! <%= pkg.name %> - v<%= pkg.version %> - ' +
-    '<%= grunt.template.today("yyyy-mm-dd") %> */\n';
-
   // Project configuration.
   grunt.initConfig({
     pkg: require('./package.json'),
-    concat: {
-      options: {
-        banner: banner
-      },
-      normal: {
-        src: ['<banner>', 'src/inline-attachment.js', 'src/input.inline-attachment.js'],
-        dest: 'dist/inline-attachment.js'
-      },
-      jquery: {
-        src: ['<banner>', 'src/inline-attachment.js', 'src/jquery.inline-attachment.js'],
-        dest: 'dist/jquery.inline-attachment.js'
-      },
-      codemirror3: {
-        src: ['<banner>', 'src/inline-attachment.js', 'src/codemirror-3.inline-attachment.js'],
-        dest: 'dist/codemirror-3.inline-attachment.js'
-      },
-      codemirror4: {
-        src: ['<banner>', 'src/inline-attachment.js', 'src/codemirror-4.inline-attachment.js'],
-        dest: 'dist/codemirror-4.inline-attachment.js'
-      },
-      angularjs: {
-        src: ['<banner>', 'src/inline-attachment.js', 'src/input.inline-attachment.js', 'src/angularjs.inline-attachment.js'],
-        dest: 'dist/angularjs.inline-attachment.js'
-      }
-    },
-    // Lists of files to be minified with UglifyJS.
-    uglify: {
-      options: {
-        banner: banner
-      },
-      normal: {
-        src: ['<banner>', 'dist/inline-attachment.js'],
-        dest: 'dist/inline-attachment.min.js',
-        separator: ';'
-      },
-      jquery: {
-        src: ['<banner>', 'dist/jquery.inline-attachment.js'],
-        dest: 'dist/jquery.inline-attachment.min.js',
-        separator: ';'
-      },
-      codemirror3: {
-        src: ['<banner>', 'dist/codemirror-3.inline-attachment.js'],
-        dest: 'dist/codemirror-3.inline-attachment.min.js',
-        separator: ';'
-      },
-      codemirror4: {
-        src: ['<banner>', 'dist/codemirror-4.inline-attachment.js'],
-        dest: 'dist/codemirror-4.inline-attachment.min.js',
-        separator: ';'
-      },
-      angularjs: {
-        src: ['<banner>', 'dist/angularjs.inline-attachment.js'],
-        dest: 'dist/angularjs.inline-attachment.min.js',
-        separator: ';'
-      }
-    },
     jshint: {
       all: ['src/*.js'],
       options: {
@@ -74,8 +14,10 @@ module.exports = function(grunt) {
         browser: true,
         undef: true,
         unused: true,
-        strict: true,
+        strict: false,
         trailing: true,
+        esversion: 6,
+        asi: true,
         indent: 2
       }
     },
@@ -87,10 +29,30 @@ module.exports = function(grunt) {
   });
 
   grunt.loadNpmTasks('grunt-contrib-jshint');
-  grunt.loadNpmTasks('grunt-contrib-concat');
-  grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-casperjs');
 
-  grunt.registerTask('qa', ['jshint']);
-  grunt.registerTask('default', ['qa', 'concat', 'uglify']);
+  // https://github.com/webpack/grunt-webpack/issues/29
+  grunt.registerTask('webpack', function(mode) {
+    var done = this.async();
+    var config = require('./webpack.config');
+    var webpack = require('webpack')
+
+    var handler = function(err, stats) {
+      console.log(stats.toString({
+	colors: true
+      }));
+
+      done(!err && !stats.hasErrors());
+      done = function() {};
+    };
+
+    var compiler = webpack(config);
+    if (mode === 'development') {
+      compiler.watch(grunt.config('jsConfig.watchDelay'), handler);
+    } else {
+      compiler.run(handler);
+    }
+  });
+
+  grunt.registerTask('default', ['jshint', 'casperjs', 'webpack']);
 };
